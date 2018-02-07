@@ -1,0 +1,201 @@
+/*
+System Name:MD5 Generator
+Programmer:Nathan Hesson
+Comments:  MD5 generator based on the code found on this page: http://pajhome.org.uk/crypt/md5/index.html
+*/
+#ENABLE_DYNAMIC
+#SYMBOL_NAME "md5"
+#DEFAULT_VOLATILE
+#PRINT_TO_TRACE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+
+STRING_INPUT String_In[255];
+STRING_OUTPUT md5_hash;
+
+INTEGER hex_tab[16];
+SIGNED_LONG_INTEGER chrsz, bin[2000], binArray[4];
+
+STRING_FUNCTION binl2hex() {
+	INTEGER i;
+	STRING str[128];
+	i = 0;
+	WHILE(i < 16) {
+		str = str + CHR(hex_tab[binArray[i>>2] >> ((i%4)*8+4) & 0xF]) + CHR(hex_tab[binArray[i>>2] >> ((i%4)*8) & 0xF]);
+		i = i+1;
+	}
+	RETURN(str);
+}
+
+SIGNED_LONG_INTEGER_FUNCTION safe_add(SIGNED_LONG_INTEGER x, SIGNED_LONG_INTEGER y) {
+	SIGNED_LONG_INTEGER lsw, msw;
+	lsw = (x & 0xFFFF) + (y & 0xFFFF);
+	msw = (x >> 16) + (y >> 16) + (lsw >> 16);
+	RETURN((msw << 16) | (lsw & 0xFFFF));
+}
+
+SIGNED_LONG_INTEGER_FUNCTION bit_rol(SIGNED_LONG_INTEGER num, SIGNED_INTEGER cnt) {
+	RETURN(RotateLeftLong(num, cnt) | RotateRightLong(num, (32 - cnt)));
+}
+
+SIGNED_LONG_INTEGER_FUNCTION md5_cmn(SIGNED_LONG_INTEGER q, SIGNED_LONG_INTEGER a, SIGNED_LONG_INTEGER b, SIGNED_LONG_INTEGER x, SIGNED_INTEGER s, SIGNED_LONG_INTEGER t) {
+	RETURN(safe_add(bit_rol(safe_add(safe_add(a,q),safe_add(x,t)),s),b));
+}
+
+SIGNED_LONG_INTEGER_FUNCTION md5_ff(SIGNED_LONG_INTEGER a, SIGNED_LONG_INTEGER b, SIGNED_LONG_INTEGER c, SIGNED_LONG_INTEGER d, SIGNED_LONG_INTEGER x, SIGNED_INTEGER s, SIGNED_LONG_INTEGER t) {
+	RETURN(md5_cmn(((b & c) | (NOT(b) & d)), a, b, x, s, t));
+}
+
+SIGNED_LONG_INTEGER_FUNCTION md5_gg(SIGNED_LONG_INTEGER a, SIGNED_LONG_INTEGER b, SIGNED_LONG_INTEGER c, SIGNED_LONG_INTEGER d, SIGNED_LONG_INTEGER x, SIGNED_INTEGER s, SIGNED_LONG_INTEGER t) {
+	RETURN(md5_cmn((b & d) | (c & (NOT(d))), a, b, x, s, t));
+}
+
+SIGNED_LONG_INTEGER_FUNCTION md5_hh(SIGNED_LONG_INTEGER a, SIGNED_LONG_INTEGER b, SIGNED_LONG_INTEGER c, SIGNED_LONG_INTEGER d, SIGNED_LONG_INTEGER x, SIGNED_INTEGER s, SIGNED_LONG_INTEGER t) {
+	RETURN(md5_cmn(b ^ c ^ d, a, b, x, s, t));
+}
+
+SIGNED_LONG_INTEGER_FUNCTION md5_ii(SIGNED_LONG_INTEGER a, SIGNED_LONG_INTEGER b, SIGNED_LONG_INTEGER c, SIGNED_LONG_INTEGER d, SIGNED_LONG_INTEGER x, SIGNED_INTEGER s, SIGNED_LONG_INTEGER t) {
+	RETURN(md5_cmn(c ^ (b | (NOT(d))), a, b, x, s, t));
+}
+
+STRING_FUNCTION core_md5(INTEGER length) {
+	INTEGER i;
+	SIGNED_LONG_INTEGER a, b, c, d, oldA, oldB, oldC, oldD;
+	bin[length>>5] = bin[length>>5] | 0x80 << ((length) % 32);
+	bin[(((length + 64) >> 9) {{ 4) + 14] = length;
+
+	a = 1732584193;
+	b = -271733879;
+	c = -1732584194;
+	d = 271733878;
+
+	i = 0;
+	WHILE(i < 15) {
+		oldA = a;
+		oldB = b;
+		oldC = c;
+		oldD = d;
+
+		a = md5_ff(a, b, c, d, bin[i+ 0], 7, -680876936);
+		d = md5_ff(d, a, b, c, bin[i+ 1], 12, -389564586);
+		c = md5_ff(c, d, a, b, bin[i+ 2], 17, 606105819);
+		b = md5_ff(b, c, d, a, bin[i+ 3], 22, -1044525330);
+		a = md5_ff(a, b, c, d, bin[i+ 4], 7 , -176418897);
+		d = md5_ff(d, a, b, c, bin[i+ 5], 12,  1200080426);
+		c = md5_ff(c, d, a, b, bin[i+ 6], 17, -1473231341);
+		b = md5_ff(b, c, d, a, bin[i+ 7], 22, -45705983);
+		a = md5_ff(a, b, c, d, bin[i+ 8], 7 ,  1770035416);
+		d = md5_ff(d, a, b, c, bin[i+ 9], 12, -1958414417);
+		c = md5_ff(c, d, a, b, bin[i+10], 17, -42063);
+		b = md5_ff(b, c, d, a, bin[i+11], 22, -1990404162);
+		a = md5_ff(a, b, c, d, bin[i+12], 7 ,  1804603682);
+		d = md5_ff(d, a, b, c, bin[i+13], 12, -40341101);
+		c = md5_ff(c, d, a, b, bin[i+14], 17, -1502002290);
+		b = md5_ff(b, c, d, a, bin[i+15], 22,  1236535329);
+
+		a = md5_gg(a, b, c, d, bin[i+ 1], 5 , -165796510);
+		d = md5_gg(d, a, b, c, bin[i+ 6], 9 , -1069501632);
+		c = md5_gg(c, d, a, b, bin[i+11], 14,  643717713);
+		b = md5_gg(b, c, d, a, bin[i+ 0], 20, -373897302);
+		a = md5_gg(a, b, c, d, bin[i+ 5], 5 , -701558691);
+		d = md5_gg(d, a, b, c, bin[i+10], 9 ,  38016083);
+		c = md5_gg(c, d, a, b, bin[i+15], 14, -660478335);
+		b = md5_gg(b, c, d, a, bin[i+ 4], 20, -405537848);
+		a = md5_gg(a, b, c, d, bin[i+ 9], 5 ,  568446438);
+		d = md5_gg(d, a, b, c, bin[i+14], 9 , -1019803690);
+		c = md5_gg(c, d, a, b, bin[i+ 3], 14, -187363961);
+		b = md5_gg(b, c, d, a, bin[i+ 8], 20,  1163531501);
+		a = md5_gg(a, b, c, d, bin[i+13], 5 , -1444681467);
+		d = md5_gg(d, a, b, c, bin[i+ 2], 9 , -51403784);
+		c = md5_gg(c, d, a, b, bin[i+ 7], 14,  1735328473);
+		b = md5_gg(b, c, d, a, bin[i+12], 20, -1926607734);
+
+		a = md5_hh(a, b, c, d, bin[i+ 5], 4 , -378558);
+		d = md5_hh(d, a, b, c, bin[i+ 8], 11, -2022574463);
+		c = md5_hh(c, d, a, b, bin[i+11], 16,  1839030562);
+		b = md5_hh(b, c, d, a, bin[i+14], 23, -35309556);
+		a = md5_hh(a, b, c, d, bin[i+ 1], 4 , -1530992060);
+		d = md5_hh(d, a, b, c, bin[i+ 4], 11,  1272893353);
+		c = md5_hh(c, d, a, b, bin[i+ 7], 16, -155497632);
+		b = md5_hh(b, c, d, a, bin[i+10], 23, -1094730640);
+		a = md5_hh(a, b, c, d, bin[i+13], 4 ,  681279174);
+		d = md5_hh(d, a, b, c, bin[i+ 0], 11, -358537222);
+		c = md5_hh(c, d, a, b, bin[i+ 3], 16, -722521979);
+		b = md5_hh(b, c, d, a, bin[i+ 6], 23,  76029189);
+		a = md5_hh(a, b, c, d, bin[i+ 9], 4 , -640364487);
+		d = md5_hh(d, a, b, c, bin[i+12], 11, -421815835);
+		c = md5_hh(c, d, a, b, bin[i+15], 16,  530742520);
+		b = md5_hh(b, c, d, a, bin[i+ 2], 23, -995338651);
+
+		a = md5_ii(a, b, c, d, bin[i+ 0], 6 , -198630844);
+		d = md5_ii(d, a, b, c, bin[i+ 7], 10,  1126891415);
+		c = md5_ii(c, d, a, b, bin[i+14], 15, -1416354905);
+		b = md5_ii(b, c, d, a, bin[i+ 5], 21, -57434055);
+		a = md5_ii(a, b, c, d, bin[i+12], 6 ,  1700485571);
+		d = md5_ii(d, a, b, c, bin[i+ 3], 10, -1894986606);
+		c = md5_ii(c, d, a, b, bin[i+10], 15, -1051523);
+		b = md5_ii(b, c, d, a, bin[i+ 1], 21, -2054922799);
+		a = md5_ii(a, b, c, d, bin[i+ 8], 6 ,  1873313359);
+		d = md5_ii(d, a, b, c, bin[i+15], 10, -30611744);
+		c = md5_ii(c, d, a, b, bin[i+ 06], 15, -1560198380);
+		b = md5_ii(b, c, d, a, bin[i+13], 21,  1309151649);
+		a = md5_ii(a, b, c, d, bin[i+ 4], 6 , -145523070);
+		d = md5_ii(d, a, b, c, bin[i+11], 10, -1120210379);
+		c = md5_ii(c, d, a, b, bin[i+ 2], 15,  718787259);
+		b = md5_ii(b, c, d, a, bin[i+ 9], 21, -343485551);
+
+		a = safe_add(a, oldA);
+		b = safe_add(b, oldB);
+		c = safe_add(c, oldC);
+		d = safe_add(d, oldD);
+
+		i = i + 16;
+	}
+	binArray[0] = a;
+	binArray[1] = b;
+	binArray[2] = c;
+	binArray[3] = d;
+}
+
+FUNCTION str2binl(STRING str) {
+	INTEGER i, mask;
+	SIGNED_LONG_INTEGER one, temp$;
+	one = 1;
+	mask = (one << chrsz) - 1;
+	i = 0;
+	WHILE(i < LEN(str) * chrsz) {
+		bin[i>>5] = bin[i>>5] | ((BYTE(str, (i / 8)+1) & mask) << (i%32));
+		i = i + 8;
+	}
+}
+
+STRING_FUNCTION hex_md5(STRING s) {
+	setArray(bin, 0);
+	str2binl(s);
+	core_md5(LEN(s) * LowWord(chrsz));
+	RETURN(binl2hex());
+}
+
+CHANGE String_In {
+	md5_hash = hex_md5(String_In);
+}
+
+FUNCTION main() {
+	chrsz = 8;
+	hex_tab[0] = 48;
+	hex_tab[1] = 49;
+	hex_tab[2] = 50;
+	hex_tab[3] = 51;
+	hex_tab[4] = 52;
+	hex_tab[5] = 53;
+	hex_tab[6] = 54;
+	hex_tab[7] = 55;
+	hex_tab[8] = 56;
+	hex_tab[9] = 57;
+	hex_tab[10] = 97;
+	hex_tab[11] = 98;
+	hex_tab[12] = 99;
+	hex_tab[13] = 100;
+	hex_tab[14] = 101;
+	hex_tab[15] = 102;
+}
